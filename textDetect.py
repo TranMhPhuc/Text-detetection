@@ -12,31 +12,38 @@ pytesseract.pytesseract.tesseract_cmd=r'C:\\Program Files\\Tesseract-OCR\\tesser
 def preprocess_small_image(cv2_img):
     cv2_img = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2GRAY)
     
-    cv2_img = cv2.threshold(cv2_img, 200, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-    cv2_img = cv2.resize(cv2_img, (300, 100), interpolation = cv2.INTER_CUBIC)
+    cv2_img = cv2.threshold(cv2_img, 200, 255, 
+                            cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    cv2_img = cv2.resize(cv2_img, (300, 100), 
+                         interpolation = cv2.INTER_CUBIC)
 
     mask = np.zeros(cv2_img.shape[:2], np.uint8)
     mask[0:10, 0:300] = 255
     cv2_hist = cv2.calcHist([cv2_img], [0], mask, [256], [0, 256])
-    if (cv2_hist[0]+cv2_hist[1]+cv2_hist[2])> (cv2_hist[253]+cv2_hist[254]+ cv2_hist[255]):
+    black_hist = cv2_hist[0]+cv2_hist[1]+cv2_hist[2]
+    white_hist = cv2_hist[253]+cv2_hist[254]+ cv2_hist[255]
+    if (black_hist > white_hist):
         cv2_img=255-cv2_img
 
     cv2_img = cv2.GaussianBlur(cv2_img, (5, 5), 0)
+    
     return cv2_img
 
 
+# function notation
 def text_detector(img_path):
     image = cv2.imread(img_path)
-    image = cv2.resize(image, (640,320), interpolation = cv2.INTER_AREA)
+    # image = cv2.resize(image, (640,320), interpolation = cv2.INTER_AREA)
 
     orig = image
-    (H, W) = image.shape[:2]
+    (H, W) = orig.shape[:2]
 
     (newW, newH) = (320, 320)
+    image = cv2.resize(image, (newW, newH), interpolation = cv2.INTER_AREA)
+    
     rW = W / float(newW)
     rH = H / float(newH)
-
-    image = cv2.resize(image, (newW, newH))
+    
     (H, W) = image.shape[:2]
 
     layerNames = [
@@ -45,8 +52,8 @@ def text_detector(img_path):
 
     blob = cv2.dnn.blobFromImage(image, 1.0, (W, H),
         (123.68, 116.78, 103.94), swapRB=True, crop=False)
-
     net.setInput(blob)
+    
     (scores, geometry) = net.forward(layerNames)
 
     (numRows, numCols) = scores.shape[2:4]
@@ -55,7 +62,6 @@ def text_detector(img_path):
     confidences = []
 
     for y in range(0, numRows):
-
         scoresData = scores[0, 0, y]
         xData0 = geometry[0, 0, y]
         xData1 = geometry[0, 1, y]
@@ -108,9 +114,13 @@ def text_detector(img_path):
         endY = int(endY * rH)
         boundary = 2
 
-        text = orig[startY-boundary:endY+boundary, startX - boundary:endX + boundary]
+        text = orig[startY-boundary:endY+boundary, 
+                    startX - boundary:endX + boundary]
+        
         text = preprocess_small_image(text)
-        textRecongized = pytesseract.image_to_string(text, lang='eng',config='--psm 7')
+        textRecongized = pytesseract.image_to_string(text, 
+                                                     lang='eng',
+                                                     config='--psm 7')
         words.append(textRecongized.replace('\x0c', ''))
         cv2.rectangle(orig, (startX, startY), (endX, endY), (0, 255, 0), 2)
 
