@@ -33,7 +33,7 @@ def preprocess_small_image(cv2_img):
 # function notation
 def text_detector(img_path):
     image = cv2.imread(img_path)
-    # image = cv2.resize(image, (640,320), interpolation = cv2.INTER_AREA)
+    image = cv2.resize(image, (640,320), interpolation = cv2.INTER_AREA)
 
     orig = image
     (H, W) = orig.shape[:2]
